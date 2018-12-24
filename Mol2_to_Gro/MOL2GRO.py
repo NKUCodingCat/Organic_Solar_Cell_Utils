@@ -27,6 +27,8 @@ def _(s):
 G=networkx.Graph()
 D = mol2.read_Mol2_file(args.i)[0]
 
+# exit()
+
 M = { i.num:(_(i.type), i.X/10.0, i.Y/10.0, i.Z/10.0, i.Q)  for i in D.atom_list}
 N = [ (j.a1_num, j.a2_num) for j in D.bond_list]
 G.add_nodes_from(M)
@@ -75,7 +77,9 @@ with open(args.o, "w") as f:
                 print  >> f, "%5d%-5s%5s%5d%8.3f%8.3f%8.3f"%(CurResidue, "MG%d"%NAME, t[0], CurAtom%10000, t[1], t[2], t[3])
                 CurAtom += 1
             CurResidue  += 1
-    print >> f ,"   0.00000   0.00000   0.00000"
+    
+    print "Crysin Params: %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %5d %5d"%tuple(D.crysin)
+    print >> f ,"%12.8f  %12.8f  %12.8f"%tuple(map(lambda x:x/10.0 , D.crysin[:3]))
 
 ############################
 # GRO File FORMAT Ref: http://manual.gromacs.org/archive/5.0.3/online/gro.html

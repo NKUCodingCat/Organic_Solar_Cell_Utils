@@ -19,11 +19,12 @@ from math import sqrt
 #################################################################################################################
 # data structure to store information about each residue with the docked ligand.
 class Mol:
-    def __init__(self,header,name,atom_list,bond_list,residue_list):
+    def __init__(self,header,name,atom_list,bond_list,residue_list, crysin):
         self.header       = str(header)
         self.name         = str(name)
         self.atom_list    = atom_list
         self.bond_list    = bond_list
+        self.crysin       = crysin
 	self.residue_list = residue_list
 
 class atom:
@@ -71,6 +72,7 @@ def read_Mol2_lines(lines,startline):
     flag_mol_set = False
     flag_mol     = False
     flag_getName = False
+    flag_crysin  = False
     
 
     #data = Mol('',[],[],[])
@@ -100,6 +102,7 @@ def read_Mol2_lines(lines,startline):
                flag_atom = False
                flag_bond = False
                flag_substr = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>ATOM"):
                #print "read in atom info:"
@@ -107,6 +110,7 @@ def read_Mol2_lines(lines,startline):
                flag_bond = False
                flag_substr = False
                flag_mol = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>BOND"):
                #print "read in bond info:"
@@ -114,6 +118,7 @@ def read_Mol2_lines(lines,startline):
                flag_substr = False
                flag_mol = False
                flag_atom = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>SUBSTRUCTURE"):
                #print "read in substructure info:"
@@ -121,6 +126,19 @@ def read_Mol2_lines(lines,startline):
                flag_mol = False
                flag_atom = False
                flag_bond = False
+               flag_crysin  = False
+         
+            if(linesplit[0] == "@<TRIPOS>CRYSIN"):
+               flag_substr = False
+               flag_mol = False
+               flag_atom = False
+               flag_bond = False
+               flag_crysin  = True
+
+          
+         if (flag_crysin):
+            print linesplit 
+
          if (flag_mol and (not flag_getName) and len(linesplit)==1 ):
              if (line_num == 1):
                 #line_num = 0
@@ -140,6 +158,7 @@ def read_Mol2_lines(lines,startline):
              Q         = linesplit[8]
              temp_atom = atom(X,Y,Z,Q,atom_type,atom_name,atom_num,res_num,res_name)
              atom_list.append(temp_atom)
+
 	     if residue_list.has_key(res_num):
      		 residue_list[res_num].append(temp_atom)
     	     else:
@@ -165,6 +184,7 @@ def read_Mol2_lines(lines,startline):
                  #if (lnum != startline):
                  print lnum, startline 
                  break
+         
  
     ## we are reading in one molecule at a time
     ID_heavy_atoms(atom_list)
@@ -187,6 +207,7 @@ def read_Mol2_file(file):
     bond_list = []
     residue_list = {}
     mol_list = []
+    crysin = []
 
     flag_atom      = False
     flag_bond      = False
@@ -194,6 +215,7 @@ def read_Mol2_file(file):
     flag_mol       = False
     #flag_getName  = False
     flag_frist_mol = True
+    flag_crysin    = False
 
     i = 0  # i is the num of molecules read so far
     for line in lines:
@@ -218,6 +240,7 @@ def read_Mol2_file(file):
                flag_atom = False
                flag_bond = False
                flag_substr = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>ATOM"):
                #print "read in atom info:"
@@ -225,6 +248,7 @@ def read_Mol2_file(file):
                flag_bond = False
                flag_substr = False
                flag_mol = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>BOND"):
                #print "read in bond info:"
@@ -232,6 +256,7 @@ def read_Mol2_file(file):
                flag_substr = False
                flag_mol = False
                flag_atom = False
+               flag_crysin  = False
 
             if(linesplit[0] == "@<TRIPOS>SUBSTRUCTURE"):
                #print "read in substructure info:"
@@ -239,6 +264,15 @@ def read_Mol2_file(file):
                flag_mol = False
                flag_atom = False
                flag_bond = False
+               flag_crysin  = False
+
+            if (linesplit[0] == "@<TRIPOS>CRYSIN"):
+               flag_substr = False
+               flag_mol = False
+               flag_atom = False
+               flag_bond = False
+               flag_crysin  = True
+
          if (flag_mol and  len(linesplit) >= 1 ):
              if (line_num == 1):
                 #print line 
@@ -275,6 +309,8 @@ def read_Mol2_file(file):
              temp_bond = bond(a1_num,a2_num,bond_num,bond_type)
              bond_list.append(temp_bond)
 
+         elif (len(linesplit) != 1  and flag_crysin ):
+             crysin = map(float, linesplit)
          #elif (flag_substr):
          #        ID_heavy_atoms(atom_list)
          #        data = Mol(Name,atom_list,bond_list,residue_list)
@@ -284,7 +320,7 @@ def read_Mol2_file(file):
          #        atom_list = [];bond_list = []
     # for the last molecule.
     ID_heavy_atoms(atom_list)
-    data = Mol('',Name,atom_list,bond_list,residue_list)
+    data = Mol('',Name,atom_list,bond_list,residue_list, crysin)
     mol_list.append(data)
     atom_list = [];bond_list = []
     return mol_list
