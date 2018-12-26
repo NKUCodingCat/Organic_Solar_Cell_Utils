@@ -47,9 +47,9 @@ class bond:
         self.type = type
 class residue:
      def __init__(self,atom_list,resnum,resname):
-	self.atom_list = atom_list
-	self.resnum  = int(resnum)
-        self.resname = resname
+         self.atom_list = atom_list
+         self.resnum  = int(resnum)
+         self.resname = resname
 
 
 #################################################################################################################
