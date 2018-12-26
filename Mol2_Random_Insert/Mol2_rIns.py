@@ -25,15 +25,20 @@ class mol2_cls(object):
         Es = [(i.a1_num, i.a2_num, i.type)   for i in mol2obj.bond_list]
         G = networkx.Graph()
 
+    
+        
+        self.Cord = numpy.array( [i[2:] for i in As] )
+        Coord_avg = self.Cord.mean(axis = 0)
+        self.Cord = self.Cord - Coord_avg # Centralize
+
         for i, v in enumerate(As):
-            G.add_node(v[0], p = v)
+            G.add_node(v[0], p = (v[0], v[1], v[2]-Coord_avg[0], v[3]-Coord_avg[1], v[4]-Coord_avg[2]))
 
         for i, v in enumerate(Es):
             G.add_edge(v[0], v[1], attr_dict={"typ": v[2]})
-
+        
         self.Grph = G
-        self.Cord = numpy.array( [ list(n[1]["p"][2:]) for n in G.nodes(data=True)] )
-        self.Cord = self.Cord - self.Cord.mean(axis = 0) # Centralize
+
         self.Tran = numpy.array([0., 0., 0.])
         self.Rota = numpy.array([0., 0., 0.])
         self.Atom_Radii   = numpy.array([self._Atom_to_Radii(a[1].name) for a in As])
@@ -122,8 +127,7 @@ class Box(object):
 
     @staticmethod   # when collision occured , return True
     def Coarse_Check(mol_Fix, mol_Ins):
-        if ((sum((mol_Ins.Get_Cur_Center() - mol_Fix.Get_Cur_Center())**2))**0.5 < \
-            (mol_Fix.Farthest_Dis + mol_Ins.Farthest_Dis)):
+        if ((mol_Ins.Get_Cur_Center() - mol_Fix.Get_Cur_Center())**2).sum() < ( mol_Ins.Farthest_Dis + mol_Fix.Farthest_Dis )**2 :
            return True
         return False
 
@@ -133,22 +137,30 @@ class Box(object):
         _C1 = mol_Fix.Get_Cur_Cord()
         _C2 = mol_Ins.Get_Cur_Cord()
         _A1 = mol_Fix.Atom_Radii
-        _A2 = mol_Fix.Atom_Radii
+        _A2 = mol_Ins.Atom_Radii  # DAMN IT!
 
         _I1 = numpy.array(range(_C1.shape[0]))
         _I2 = numpy.array(range(_C2.shape[0]))
         
-        _I1, _I2 = map(lambda x: x.flatten(), numpy.meshgrid(_I1, _I2))
-        
-        Q = ((_C1[_I1] - _C2[_I2])**2).sum(axis=1) - (_A1[_I1] + _A2[_I2])**2 
-
-        return numpy.any(Q<0.05) # 0.05 for safety
+        _Ind1, _Ind2 = map(lambda x: x.flatten(), numpy.meshgrid(_I1, _I2))
+        # print _C1[_I1].shape, _C2[_I2].shape, ( _A1[_I1] + _A2[_I2] ).shape
+        # print _A1[_I1] + _A2[_I2]
+        Q = (((_C1[_Ind1] - _C2[_Ind2])**2).sum(axis=1)) ** 0.5
+        # ==========
+        __A__ = Q.argsort()[:20]
+        print Q[__A__], _Ind1[__A__], _Ind2[__A__]
+        print ( _A1[_Ind1] + _A2[_Ind2] )[Q.argsort()[:20]]
+        # ==========
+        Q -= ( _A1[_Ind1] + _A2[_Ind2] )
+        return numpy.any( Q < .1 ) # for safety
 
     def Dump_box(self):
 
         ABSOLUTE_INDEX = 1
         BOX_ATOMS = []  #(atom_glo_index, atom_obj, atom_X, atom_Y, atom_Z)
         BOX_BONDS = []  #(a1_glo_index, a2_glo_index, type)
+
+        assert len(set(map(id, self.mol_list))) == len(self.mol_list)
 
         for RES_i, mol in enumerate(self.mol_list):
             atom_ind_map = {}
@@ -174,20 +186,32 @@ class Box(object):
         return BOX_ATOMS, BOX_BONDS, RES_i + 1, self.size
 
 
-B = Box((50, 50, 50))
+B = Box((200, 200, 200))
 G = mol2_cls(Q)
-RETRY = 40
-Mols = 100 
+RETRY = 60
+Mols = 1000
 
+# G.Tran = numpy.array([42.01916912, 44.31661303, 44.2394386 ])
+# G.Rota = numpy.array([3.88249149,  3.76364506,  5.75983801])
+
+# F = copy.deepcopy(G)
+# F.Tran = numpy.array([49.77507177, 48.06953303, 47.85623107 ])
+# F.Rota = numpy.array([5.3771549,   2.51626273,   1.47865811])
+
+# print F.Get_Cur_Cord()
+# print G.Get_Cur_Cord()
+
+# exit()
 
 while Mols > 0 and RETRY > 0:
-    X, Y, Z = numpy.random.random(size=3)*numpy.array((100, 100, 100))
+    X, Y, Z = numpy.random.random(size=3)*numpy.array((50, 50, 50)) + numpy.array((40, 40, 40))
     Rx, Ry, Rz = numpy.random.random(size=3)*2*numpy.array((numpy.pi, numpy.pi, numpy.pi))
     G.Rota = numpy.array([Rx, Ry, Rz])
     G.Tran = numpy.array([X, Y, Z])
     if B.Add_mol(G):
         Mols -= 1
         print "Insert Succ!"
+        print G.Tran, G.Rota
     else:
         RETRY -= 1
         print "Insert Failed! RETRYING"
