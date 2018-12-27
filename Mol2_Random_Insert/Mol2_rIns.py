@@ -147,9 +147,9 @@ class Box(object):
         # print _A1[_I1] + _A2[_I2]
         Q = (((_C1[_Ind1] - _C2[_Ind2])**2).sum(axis=1)) ** 0.5
         # ==========
-        __A__ = Q.argsort()[:20]
-        print Q[__A__], _Ind1[__A__], _Ind2[__A__]
-        print ( _A1[_Ind1] + _A2[_Ind2] )[Q.argsort()[:20]]
+        # __A__ = Q.argsort()[:20]
+        # print Q[__A__], _Ind1[__A__], _Ind2[__A__]
+        # print ( _A1[_Ind1] + _A2[_Ind2] )[Q.argsort()[:20]]
         # ==========
         Q -= ( _A1[_Ind1] + _A2[_Ind2] )
         return numpy.any( Q < .1 ) # for safety
@@ -191,18 +191,6 @@ G = mol2_cls(Q)
 RETRY = 60
 Mols = 1000
 
-# G.Tran = numpy.array([42.01916912, 44.31661303, 44.2394386 ])
-# G.Rota = numpy.array([3.88249149,  3.76364506,  5.75983801])
-
-# F = copy.deepcopy(G)
-# F.Tran = numpy.array([49.77507177, 48.06953303, 47.85623107 ])
-# F.Rota = numpy.array([5.3771549,   2.51626273,   1.47865811])
-
-# print F.Get_Cur_Cord()
-# print G.Get_Cur_Cord()
-
-# exit()
-
 while Mols > 0 and RETRY > 0:
     X, Y, Z = numpy.random.random(size=3)*numpy.array((50, 50, 50)) + numpy.array((40, 40, 40))
     Rx, Ry, Rz = numpy.random.random(size=3)*2*numpy.array((numpy.pi, numpy.pi, numpy.pi))
@@ -217,21 +205,6 @@ while Mols > 0 and RETRY > 0:
         print "Insert Failed! RETRYING"
 
 
-# print G.Farthest_Dis
-# G.Rota = numpy.array([1.57, 1.57, 1.57])
-# G.Tran = numpy.array([20, 20, 20])
-# print B.Add_mol(G)
-# G = mol2_cls(Q)
-# G.Rota = numpy.array([2, 3.1, 1.111])
-# G.Tran = numpy.array([20, 20, 24])
-# print B.Add_mol(G)
-
-
-# exit()
-
-# A = G.Get_Cur_Cord()
-# G.Rota = numpy.array([1, 1.1, 1.111])
-# B = G.Get_Cur_Cord()
 A, B, Res, Box_size = B.Dump_box()
 
 with open("t.mol2", "w") as f:
