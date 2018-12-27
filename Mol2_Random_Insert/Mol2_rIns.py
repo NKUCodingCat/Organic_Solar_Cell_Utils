@@ -1,7 +1,7 @@
-import numpy, argparse, networkx, copy
+import numpy, argparse, networkx, copy, random
 import mol2
 
-Q =  mol2.read_Mol2_file("pc71bm.mol2")[0]
+
 # As = [(i.num, i.name, i.X, i.Y, i.Z) for i in Q.atom_list]
 # Es = [(i.a1_num, i.a2_num, i.type)   for i in Q.bond_list]
 
@@ -104,8 +104,13 @@ class mol2_cls(object):
             raise
 
 class Box(object):
+
+    delta = numpy.array([(i, j, k) for i in [-1, 0, 1] for j in [-1, 0, 1] for k in [-1, 0, 1] ])
+
     def __init__(self, size):
         self.mol_list = []
+        size = numpy.array(size).flatten()
+        assert size.size == 3
         self.size = size
 
     def Add_mol(self, mol_obj):
@@ -116,13 +121,19 @@ class Box(object):
     
     def Check_Collision(self, new_obj):
         # TODO: add boundary support
-        for mol_F in self.mol_list:
-            if not self.Coarse_Check(mol_F, new_obj):
-                continue
-            if not self.Fine_Check(mol_F, new_obj):
-                continue
-            return False
+        __OLD = copy.deepcopy(new_obj.Tran)
 
+        for d in self.delta:
+
+            new_obj.Tran = copy.deepcopy(__OLD) + d*self.size
+            for mol_F in self.mol_list:
+                if not self.Coarse_Check(mol_F, new_obj):
+                    continue
+                if not self.Fine_Check(mol_F, new_obj):
+                    continue
+                return False
+
+        new_obj.Tran = __OLD
         return True
 
     @staticmethod   # when collision occured , return True
@@ -185,42 +196,77 @@ class Box(object):
 
         return BOX_ATOMS, BOX_BONDS, RES_i + 1, self.size
 
+    def Box_2_mol_String(self): 
+        A, B, Res, Box_size = self.Dump_box()
+        Res_S = ""
+        Res_S +=        "# dhjaihdwpidhjpw"
+        Res_S += "\n" + "@<TRIPOS>MOLECULE"
+        Res_S += "\n" + "DRCN5T"
+        Res_S += "\n" + "%-5d %-5d %-5d 0     0"%(len(A), len(B), Res)
+        Res_S += "\n" + "SMALL"
+        Res_S += "\n" + "USER_CHARGES\n\n"
+        Res_S += "\n" + "@<TRIPOS>ATOM"
+        for i in A:
+            Res_S += "\n" + "%-6d %-4s %9.4f %9.4f %9.4f %-5s %4s %6s %9.4f" % (
+                i.num, i.name, i.X, i.Y, i.Z, i.type, i.resnum, i.resname, i.Q
+            )
+        Res_S += "\n" + "@<TRIPOS>BOND"
+        for j, v in enumerate(B):
+            Res_S += "\n" + "%-5d %-5d %-5d %s"%((j+1, )+v)
+        Res_S += "\n" + "@<TRIPOS>CRYSIN"
+        Res_S += "\n" + "%-12.8f  %-12.8f  %-12.8f  90   90   90   1   1"%tuple(Box_size.tolist())
 
-B = Box((200, 200, 200))
-G = mol2_cls(Q)
-RETRY = 60
-Mols = 1000
-
-while Mols > 0 and RETRY > 0:
-    X, Y, Z = numpy.random.random(size=3)*numpy.array((50, 50, 50)) + numpy.array((40, 40, 40))
-    Rx, Ry, Rz = numpy.random.random(size=3)*2*numpy.array((numpy.pi, numpy.pi, numpy.pi))
-    G.Rota = numpy.array([Rx, Ry, Rz])
-    G.Tran = numpy.array([X, Y, Z])
-    if B.Add_mol(G):
-        Mols -= 1
-        print "Insert Succ!"
-        print G.Tran, G.Rota
-    else:
-        RETRY -= 1
-        print "Insert Failed! RETRYING"
+        return Res_S
 
 
-A, B, Res, Box_size = B.Dump_box()
+pc71 =  mol2_cls(mol2.read_Mol2_file("pc71bm.mol2")[0]         ) # 266
+drcn =  mol2_cls(mol2.read_Mol2_file("DRCN5T-GSOpt-2.mol2")[0] ) # 432
+
+M = [pc71, ]*266 + [drcn, ]*432
+random.shuffle(M)
+
+B = Box((150, 150, 150))
+# G = mol2_cls(Q)
+RETRY = 1<<100
+
+for ind, m in enumerate(M):
+
+    while RETRY > 0:
+
+        X, Y, Z = numpy.random.random(size=3)*B.size
+        Rx, Ry, Rz = numpy.random.random(size=3)*2*numpy.array((numpy.pi, numpy.pi, numpy.pi))
+
+        m.Rota = numpy.array([Rx, Ry, Rz])
+        m.Tran = numpy.array([X, Y, Z])
+
+        if B.Add_mol(m):
+            print "Succ - %d"%ind
+            break
+
+        else:
+            RETRY -= 1
+            print "RETRY"
+
+    if RETRY < 0: break
+
+
+# A, B, Res, Box_size = B.Dump_box()
 
 with open("t.mol2", "w") as f:
-    print >>f, "# dhjaihdwpidhjpw"
-    print >>f, "@<TRIPOS>MOLECULE"
-    print >>f, "DRCN5T"
-    print >>f, "%-5d %-5d %-5d 0     0"%(len(A), len(B), Res)
-    print >>f, "SMALL"
-    print >>f, "USER_CHARGES\n\n"
-    print >>f, "@<TRIPOS>ATOM"
-    for i in A:
-        print >>f, "%-6d %-4s %9.4f %9.4f %9.4f %-5s %4s %6s %9.4f" % (
-            i.num, i.name, i.X, i.Y, i.Z, i.type, i.resnum, i.resname, i.Q
-        )
-    print >>f, "@<TRIPOS>BOND"
-    for j, v in enumerate(B):
-        print >>f, "%-5d %-5d %-5d %s"%((j+1, )+v)
-    print >>f, "@<TRIPOS>CRYSIN"
-    print >>f, "%-12.8f  %-12.8f  %-12.8f  90   90   90   1   1"%Box_size
+    print >>f, B.Box_2_mol_String()
+    # print >>f, "# dhjaihdwpidhjpw"
+    # print >>f, "@<TRIPOS>MOLECULE"
+    # print >>f, "DRCN5T"
+    # print >>f, "%-5d %-5d %-5d 0     0"%(len(A), len(B), Res)
+    # print >>f, "SMALL"
+    # print >>f, "USER_CHARGES\n\n"
+    # print >>f, "@<TRIPOS>ATOM"
+    # for i in A:
+    #     print >>f, "%-6d %-4s %9.4f %9.4f %9.4f %-5s %4s %6s %9.4f" % (
+    #         i.num, i.name, i.X, i.Y, i.Z, i.type, i.resnum, i.resname, i.Q
+    #     )
+    # print >>f, "@<TRIPOS>BOND"
+    # for j, v in enumerate(B):
+    #     print >>f, "%-5d %-5d %-5d %s"%((j+1, )+v)
+    # print >>f, "@<TRIPOS>CRYSIN"
+    # print >>f, "%-12.8f  %-12.8f  %-12.8f  90   90   90   1   1"%tuple(Box_size.tolist())
