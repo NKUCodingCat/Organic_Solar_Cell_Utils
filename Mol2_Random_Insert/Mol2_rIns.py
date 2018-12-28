@@ -2,20 +2,6 @@ import numpy, argparse, networkx, copy, random
 import mol2
 
 
-# As = [(i.num, i.name, i.X, i.Y, i.Z) for i in Q.atom_list]
-# Es = [(i.a1_num, i.a2_num, i.type)   for i in Q.bond_list]
-
-# print As
-
-# G = networkx.Graph()
-# for i, v in enumerate(As):
-#     G.add_node(v[0], p = v)
-
-# for i, v in enumerate(Es):
-#     G.add_edge(v[0], v[1], attr_dict={"typ": v[2]})
-
-# print [ list(n[1]["p"][2:]) for n in G.nodes(data=True)]
-
 class mol2_cls(object):
     
     def __init__(self, mol2obj):
@@ -82,9 +68,6 @@ class mol2_cls(object):
             ]
         )
 
-        # Geo_Center = x.mean(axis=0)
-        # Tmp = x - Geo_Center
-        # Tmp = _(Tmp, R_m) + Geo_Center 
         return _(x, R_m)
 
     @staticmethod
@@ -122,14 +105,15 @@ class Box(object):
     def Check_Collision(self, new_obj):
         # TODO: add boundary support
         __OLD = copy.deepcopy(new_obj.Tran)
+        C_chk, F_chk = self.Coarse_Check, self.Fine_Check
 
         for d in self.delta:
 
             new_obj.Tran = copy.deepcopy(__OLD) + d*self.size
             for mol_F in self.mol_list:
-                if not self.Coarse_Check(mol_F, new_obj):
+                if not C_chk(mol_F, new_obj):
                     continue
-                if not self.Fine_Check(mol_F, new_obj):
+                if not F_chk(mol_F, new_obj):
                     continue
                 return False
 
@@ -138,9 +122,7 @@ class Box(object):
 
     @staticmethod   # when collision occured , return True
     def Coarse_Check(mol_Fix, mol_Ins):
-        if ((mol_Ins.Get_Cur_Center() - mol_Fix.Get_Cur_Center())**2).sum() < ( mol_Ins.Farthest_Dis + mol_Fix.Farthest_Dis )**2 :
-           return True
-        return False
+        return ((mol_Ins.Get_Cur_Center() - mol_Fix.Get_Cur_Center())**2).sum() < ( mol_Ins.Farthest_Dis + mol_Fix.Farthest_Dis )**2 
 
     @staticmethod   # when collision occured , return True
     def Fine_Check(mol_Fix, mol_Ins):
@@ -220,8 +202,8 @@ class Box(object):
 
 # TODO: we need argparser, maybe some optimization for checking collision
 
-pc71 =  mol2_cls(mol2.read_Mol2_file("pc71bm.mol2")[0]         ) # 266
-drcn =  mol2_cls(mol2.read_Mol2_file("DRCN5T-GSOpt-2.mol2")[0] ) # 432
+pc71 = mol2_cls(mol2.read_Mol2_file("pc71bm.mol2")[0]         ) # 266
+drcn = mol2_cls(mol2.read_Mol2_file("DRCN5T-GSOpt-2.mol2")[0] ) # 432
 
 M = [pc71, ]*266 + [drcn, ]*432
 assert sum(map(lambda g:g.Atom_Count, M)) <= 100000, "Gro file does not support a system that contains more than 100,000 atoms"
